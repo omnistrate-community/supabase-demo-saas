@@ -11,6 +11,19 @@ x-omnistrate-integrations:
   - omnistrateMetrics
   - omnistrateLogging
 
+x-internal-integrations:
+  metrics:
+    provider: datadog
+    endpoint: us5.datadoghq.com
+    secretLocators:
+      aws: arn:aws:secretsmanager:us-east-1:541226919566:secret:demo/integration/datadog-GoTe4I
+
+  logs:
+    provider: datadog
+    endpoint: us5.datadoghq.com
+    secretLocators:
+      aws: arn:aws:secretsmanager:us-east-1:541226919566:secret:demo/integration/datadog-GoTe4I
+
 name: supabase
 services:
   analytics:
@@ -727,7 +740,7 @@ services:
     networks:
       default: null
     restart: unless-stopped
- 
+
 networks:
   default:
     name: supabase_default
