@@ -7,9 +7,10 @@ x-omnistrate-service-plan:
       AwsAccountId: '541226919566'
       AwsBootstrapRoleAccountArn: 'arn:aws:iam::541226919566:role/omnistrate-bootstrap-role'
 
-x-omnistrate-integrations:
-  - omnistrateMetrics
-  - omnistrateLogging
+x-customer-integrations:
+  licensing: # Omnistrate licensing with default values
+  logs: # Omnistrate native
+  metrics: # Omnistrate native
 
 x-internal-integrations:
   metrics:
