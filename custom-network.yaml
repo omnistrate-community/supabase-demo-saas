@@ -1,18 +1,45 @@
-version: "3.9"
+# yaml-language-server: $schema=https://api.omnistrate.cloud/2022-09-01-00/schema/compose-spec-schema.json
+version: '3.9'
 x-omnistrate-service-plan:
-  name: 'Pro Tier'
+  name: 'Custom Network Tier'
   tenancyType: 'OMNISTRATE_DEDICATED_TENANCY'
+  billingProviders:
+    - name: stripe
+      externalProductID: ''
+      isDefault: true
+      enablePaywall: false
+  maxNumberOfInstancesAllowed: 100
+  pricing:
+    - dimension: cpu
+      unit: cores
+      timeUnit: hour
+      price: 1
+    - dimension: memory
+      unit: GiB
+      timeUnit: hour
+      price: 0.5
+    - dimension: storage
+      unit: GiB
+      timeUnit: hour
+      price: 0.5
+    - dimension: replica
+      timeUnit: hour
+      price: 0
   deployment:
     hostedDeployment:
       AwsAccountId: '<AWS_ACCOUNT_ID>'
-      AwsBootstrapRoleAccountArn: 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/omnistrate-bootstrap-role'
+      AWSBootstrapRoleAccountArn: 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/omnistrate-bootstrap-role'
       GcpProjectId: '<GCP_INFO>'
       GcpProjectNumber: '<GCP_INFO>'
       GcpServiceAccountEmail: '<GCP_INFO>'
+      AzureSubscriptionId: '4a66b749-4fd1-4367-a681-5deecf287e14'
+      AzureTenantId: '4e6c839d-e141-462e-bc65-8cd863580351'
+  features:
+    CUSTOM_NETWORKS:
 
-x-omnistrate-integrations:
-  - omnistrateMetrics
-  - omnistrateLogging
+x-customer-integrations:
+  metrics:
+  logs:
 
 x-internal-integrations:
   metrics:
@@ -22,18 +49,23 @@ x-internal-integrations:
       aws: arn:aws:secretsmanager:<REGION>:<AWS_ACCOUNT_ID>:secret:<SECRET_PATH>
 
   logs:
-    provider: datadog
-    endpoint: us5.datadoghq.com
-    secretLocators:
-      aws: arn:aws:secretsmanager:<REGION>:<AWS_ACCOUNT_ID>:secret:<SECRET_PATH>
+    provider: native
 
 name: supabase
 services:
   analytics:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the Analytics"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the Analytics'
         type: Password
         required: true
         export: true
@@ -46,15 +78,15 @@ services:
       DB_DATABASE: postgres
       DB_HOSTNAME: db
       DB_PASSWORD: $var.postgresPassword
-      DB_PORT: "5432"
+      DB_PORT: '5432'
       DB_SCHEMA: _analytics
       DB_USERNAME: supabase_admin
       LOGFLARE_API_KEY: your-super-secret-and-long-logflare-key
       LOGFLARE_FEATURE_FLAG_OVERRIDE: multibackend=true
-      LOGFLARE_MIN_CLUSTER_SIZE: "1"
+      LOGFLARE_MIN_CLUSTER_SIZE: '1'
       LOGFLARE_NODE_HOST: 127.0.0.1
-      LOGFLARE_SINGLE_TENANT: "true"
-      LOGFLARE_SUPABASE_MODE: "true"
+      LOGFLARE_SINGLE_TENANT: 'true'
+      LOGFLARE_SUPABASE_MODE: 'true'
       POSTGRES_BACKEND_SCHEMA: _analytics
       POSTGRES_BACKEND_URL: postgresql://supabase_admin:{{ $var.postgresPassword }}@db:5432/postgres
     healthcheck:
@@ -71,15 +103,23 @@ services:
     ports:
       - mode: ingress
         target: 4000
-        published: "4000"
+        published: '4000'
         protocol: tcp
     restart: unless-stopped
 
   auth:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the Analytics"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the Analytics'
         type: Password
         required: true
         export: true
@@ -140,25 +180,25 @@ services:
     environment:
       API_EXTERNAL_URL: https://gateway.$(EXTERNAL_DNS_SUFFIX)
       GOTRUE_API_HOST: 0.0.0.0
-      GOTRUE_API_PORT: "9999"
+      GOTRUE_API_PORT: '9999'
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:{{ $var.postgresPassword }}@db:5432/postgres
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
-      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
-      GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
+      GOTRUE_DISABLE_SIGNUP: 'false'
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: 'false'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'true'
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
-      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_EXP: '3600'
       GOTRUE_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
-      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: 'false'
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_SITE_URL: https://gateway.$(EXTERNAL_DNS_SUFFIX)
-      GOTRUE_SMS_AUTOCONFIRM: "true"
+      GOTRUE_SMS_AUTOCONFIRM: 'true'
       GOTRUE_SMTP_ADMIN_EMAIL: $var.smtpAdminEmail
       GOTRUE_SMTP_HOST: $var.smtpHost
       GOTRUE_SMTP_PASS: $var.smtpPassword
@@ -182,10 +222,18 @@ services:
     restart: unless-stopped
 
   db:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the DB"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the DB'
         type: Password
         required: true
         export: true
@@ -200,15 +248,18 @@ services:
       - log_min_messages=fatal
     container_name: supabase-db
     environment:
-      JWT_EXP: "3600"
+      JWT_EXP: '3600'
       JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
       PGDATABASE: postgres
       PGPASSWORD: $var.postgresPassword
-      PGPORT: "5432"
+      PGPORT: '5432'
       POSTGRES_DB: postgres
       POSTGRES_HOST: /var/run/postgresql
       POSTGRES_PASSWORD: $var.postgresPassword
-      POSTGRES_PORT: "5432"
+      POSTGRES_PORT: '5432'
+      SECURITY_CONTEXT_FS_GROUP: 0
+      SECURITY_CONTEXT_GROUP_ID: 0
+      SECURITY_CONTEXT_USER_ID: 0
     healthcheck:
       test:
         - CMD-SHELL
@@ -222,7 +273,7 @@ services:
     ports:
       - mode: ingress
         target: 5432
-        published: "5432"
+        published: '5432'
         protocol: tcp
     restart: unless-stopped
     volumes:
@@ -264,10 +315,18 @@ services:
           create_host_path: true
 
   functions:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the DB"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the DB'
         type: Password
         required: true
         export: true
@@ -290,11 +349,14 @@ services:
     container_name: supabase-edge-functions
     environment:
       JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
+      SECURITY_CONTEXT_FS_GROUP: 0
+      SECURITY_CONTEXT_GROUP_ID: 0
+      SECURITY_CONTEXT_USER_ID: 0
       SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE
       SUPABASE_DB_URL: postgresql://postgres:{{ $var.postgresPassword }}@db:5432/postgres
       SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q
       SUPABASE_URL: http://gateway:8000
-      VERIFY_JWT: "false"
+      VERIFY_JWT: 'false'
     image: supabase/edge-runtime:v1.58.2
     networks:
       default: null
@@ -308,6 +370,47 @@ services:
           create_host_path: true
 
   imgproxy:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
+    x-omnistrate-api-params:
+      - name: ImgproxyBind
+        key: imgproxyBind
+        description: API parameter for environment variable IMGPROXY_BIND
+        type: String
+        required: false
+        export: false
+        modifiable: true
+        defaultValue: :5001
+      - name: ImgproxyEnableWebpDetection
+        key: imgproxyEnableWebpDetection
+        description: API parameter for environment variable IMGPROXY_ENABLE_WEBP_DETECTION
+        type: String
+        required: false
+        export: false
+        modifiable: true
+        defaultValue: 'true'
+      - name: ImgproxyLocalFilesystemRoot
+        key: imgproxyLocalFilesystemRoot
+        description: API parameter for environment variable IMGPROXY_LOCAL_FILESYSTEM_ROOT
+        type: String
+        required: false
+        export: false
+        modifiable: true
+        defaultValue: /
+      - name: ImgproxyUseEtag
+        key: imgproxyUseEtag
+        description: API parameter for environment variable IMGPROXY_USE_ETAG
+        type: String
+        required: false
+        export: false
+        modifiable: true
+        defaultValue: 'true'
     x-omnistrate-mode-internal: true
     x-omnistrate-capabilities:
       enableMultiZone: true
@@ -320,10 +423,10 @@ services:
         overUtilizedThreshold: 80
     container_name: supabase-imgproxy
     environment:
-      IMGPROXY_BIND: :5001
-      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
-      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
-      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_BIND: $var.imgproxyBind
+      IMGPROXY_ENABLE_WEBP_DETECTION: $var.imgproxyEnableWebpDetection
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: $var.imgproxyLocalFilesystemRoot
+      IMGPROXY_USE_ETAG: $var.imgproxyUseEtag
     healthcheck:
       test:
         - CMD
@@ -344,17 +447,25 @@ services:
           create_host_path: true
 
   gateway:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Dashboard Password"
-        key: "dashboardPassword"
-        description: "Password for the Studio dashboard"
+      - name: 'Dashboard Password'
+        key: 'dashboardPassword'
+        description: 'Password for the Studio dashboard'
         type: String
         required: true
         export: true
         modifiable: true
-      - name: "Dashboard Username"
-        key: "dashboardUsername"
-        description: "Username for the Studio dashboard"
+      - name: 'Dashboard Username'
+        key: 'dashboardUsername'
+        description: 'Username for the Studio dashboard'
         type: String
         required: true
         export: true
@@ -364,7 +475,7 @@ services:
     x-omnistrate-capabilities:
       enableMultiZone: true
       customDNS:
-        targetPort: 8000
+        TargetPort: 8000
       httpReverseProxy:
         targetPort: 8000
       autoscaling:
@@ -383,12 +494,15 @@ services:
     environment:
       DASHBOARD_PASSWORD: $var.dashboardPassword
       DASHBOARD_USERNAME: $var.dashboardUsername
-      KONG_DATABASE: "off"
+      KONG_DATABASE: 'off'
       KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      SECURITY_CONTEXT_FS_GROUP: 0
+      SECURITY_CONTEXT_GROUP_ID: 0
+      SECURITY_CONTEXT_USER_ID: 0
       SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE
       SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJzZXJ2aWNlX3JvbGUiLAogICAgImlzcyI6ICJzdXBhYmFzZS1kZW1vIiwKICAgICJpYXQiOiAxNjQxNzY5MjAwLAogICAgImV4cCI6IDE3OTk1MzU2MDAKfQ.DaYlNEoUrrEn2Ig7tqibS-PHK5vgusbcbo7X36XVt4Q
     image: kong:2.8.1
@@ -397,7 +511,7 @@ services:
     ports:
       - mode: ingress
         target: 8000
-        published: "8000"
+        published: '8000'
         protocol: tcp
     restart: unless-stopped
     volumes:
@@ -408,10 +522,18 @@ services:
           create_host_path: true
 
   meta:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the Meta"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the Meta'
         type: Password
         required: true
         export: true
@@ -431,19 +553,27 @@ services:
       PG_META_DB_HOST: db
       PG_META_DB_NAME: postgres
       PG_META_DB_PASSWORD: $var.postgresPassword
-      PG_META_DB_PORT: "5432"
+      PG_META_DB_PORT: '5432'
       PG_META_DB_USER: supabase_admin
-      PG_META_PORT: "8080"
+      PG_META_PORT: '8080'
     image: supabase/postgres-meta:v0.83.2
     networks:
       default: null
     restart: unless-stopped
 
   realtime:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the Realtime"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the Realtime'
         type: Password
         required: true
         export: true
@@ -468,14 +598,17 @@ services:
       DB_HOST: db
       DB_NAME: postgres
       DB_PASSWORD: $var.postgresPassword
-      DB_PORT: "5432"
+      DB_PORT: '5432'
       DB_USER: supabase_admin
-      DNS_NODES: ''''''
+      DNS_NODES: "''"
       ERL_AFLAGS: -proto_dist inet_tcp
-      PORT: "4000"
-      RLIMIT_NOFILE: "10000"
+      PORT: '4000'
+      RLIMIT_NOFILE: '10000'
       SECRET_KEY_BASE: UpNVntn3cDxHJpq99YMc1T1AQgQpc8kfYTuRgBiYa15BLrx8etQoXz3gZv1/u2oq
-      SEED_SELF_HOST: "true"
+      SECURITY_CONTEXT_FS_GROUP: 0
+      SECURITY_CONTEXT_GROUP_ID: 0
+      SECURITY_CONTEXT_USER_ID: 0
+      SEED_SELF_HOST: 'true'
     healthcheck:
       test:
         - CMD
@@ -496,10 +629,18 @@ services:
     restart: unless-stopped
 
   rest:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the REST"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the REST'
         type: Password
         required: true
         export: true
@@ -518,12 +659,12 @@ services:
       - postgrest
     container_name: supabase-rest
     environment:
-      PGRST_APP_SETTINGS_JWT_EXP: "3600"
+      PGRST_APP_SETTINGS_JWT_EXP: '3600'
       PGRST_APP_SETTINGS_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
       PGRST_DB_ANON_ROLE: anon
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_URI: postgres://authenticator:{{ $var.postgresPassword }}@db:5432/postgres
-      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_DB_USE_LEGACY_GUCS: 'false'
       PGRST_JWT_SECRET: your-super-secret-jwt-token-with-at-least-32-characters-long
     image: postgrest/postgrest:v12.2.0
     networks:
@@ -531,10 +672,18 @@ services:
     restart: unless-stopped
 
   storage:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     x-omnistrate-api-params:
-      - name: "Postgres Password"
-        key: "postgresPassword"
-        description: "Postgres password for the Storage"
+      - name: 'Postgres Password'
+        key: 'postgresPassword'
+        description: 'Postgres password for the Storage'
         type: Password
         required: true
         export: true
@@ -544,8 +693,8 @@ services:
     environment:
       ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE
       DATABASE_URL: postgres://supabase_storage_admin:{{ $var.postgresPassword }}@db:5432/postgres
-      ENABLE_IMAGE_TRANSFORMATION: "true"
-      FILE_SIZE_LIMIT: "52428800"
+      ENABLE_IMAGE_TRANSFORMATION: 'true'
+      FILE_SIZE_LIMIT: '52428800'
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
       GLOBAL_S3_BUCKET: stub
       IMGPROXY_URL: http://imgproxy:5001
@@ -579,9 +728,17 @@ services:
           create_host_path: true
 
   studio:
+    x-omnistrate-compute:
+      instanceTypes:
+        - cloudProvider: aws
+          name: t3.medium
+        - cloudProvider: gcp
+          name: e2-medium
+        - cloudProvider: azure
+          name: Standard_D2s_v3
     labels:
-      - "name=Supabase Cluster"
-      - "description=Supabase Cluster w/ Studio"
+      - 'name=Supabase Cluster'
+      - 'description=Supabase Cluster w/ Studio'
     container_name: supabase-studio
     x-omnistrate-api-params:
       - name: Dashboard Password
@@ -593,9 +750,9 @@ services:
         modifiable: true
         parameterDependencyMap:
           gateway: dashboardPassword
-      - name: "Dashboard Username"
-        key: "dashboardUsername"
-        description: "Username for the Studio dashboard"
+      - name: 'Dashboard Username'
+        key: 'dashboardUsername'
+        description: 'Username for the Studio dashboard'
         type: String
         required: true
         export: true
@@ -603,9 +760,9 @@ services:
         defaultValue: supabase
         parameterDependencyMap:
           gateway: dashboardUsername
-      - name: "Organization Name"
-        key: "organizationName"
-        description: "Name of the default organization"
+      - name: 'Organization Name'
+        key: 'organizationName'
+        description: 'Name of the default organization'
         type: String
         required: true
         export: true
@@ -650,7 +807,7 @@ services:
         required: false
         export: true
         modifiable: true
-        defaultValue: "2500"
+        defaultValue: '2500'
         parameterDependencyMap:
           auth: smtpPort
       - name: SMTP User
@@ -723,7 +880,7 @@ services:
       LOGFLARE_API_KEY: your-super-secret-and-long-logflare-key
       LOGFLARE_URL: http://analytics:4000
       NEXT_ANALYTICS_BACKEND_PROVIDER: postgres
-      NEXT_PUBLIC_ENABLE_LOGS: "true"
+      NEXT_PUBLIC_ENABLE_LOGS: 'true'
       POSTGRES_PASSWORD: $var.postgresPassword
       STUDIO_PG_META_URL: http://meta:8080
       SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE

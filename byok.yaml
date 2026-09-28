@@ -1,0 +1,355 @@
+name: 'BYOK Tier (Bring Your Own Kubernetes)'
+tenancyType: 'CUSTOM_TENANCY'
+
+deployment:
+  byoaDeployment:
+    AwsAccountId: '<AWS_ACCOUNT_ID>'
+    AWSBootstrapRoleAccountArn: 'arn:aws:iam::<AWS_ACCOUNT_ID>:role/omnistrate-bootstrap-role'
+
+billingProviders:
+  - name: stripe
+    externalProductID: ''
+    isDefault: true
+    enablePaywall: false
+
+maxNumberOfInstancesAllowed: 100
+
+pricing:
+  - dimension: cpu
+    unit: cores
+    timeUnit: hour
+    price: 1
+  - dimension: memory
+    unit: GiB
+    timeUnit: hour
+    price: 0.5
+  - dimension: storage
+    unit: GiB
+    timeUnit: hour
+    price: 0.5
+  - dimension: replica
+    timeUnit: hour
+    price: 0
+
+features:
+  CUSTOMER:
+    licensing:
+      licenseExpirationInDays: 30
+    logs:
+    metrics:
+  INTERNAL:
+    logs:
+    metrics:
+
+services:
+  - name: Supabase
+    description: 'Supabase running in the customer-owned Kubernetes cluster'
+    apiParameters:
+      - name: 'Release Name'
+        key: releaseName
+        description: 'Helm release name'
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: 'supabase'
+      - name: 'Namespace'
+        key: namespace
+        description: 'Kubernetes namespace to install Supabase into'
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: 'supabase'
+
+      - name: 'Postgres Password'
+        key: postgresPassword
+        description: 'Password for the Supabase Postgres superuser'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+      - name: 'JWT Secret'
+        key: jwtSecret
+        description: 'Signing secret shared by every Supabase service (min 32 characters)'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+      - name: 'Anon Key'
+        key: anonKey
+        description: 'Public anon JWT, signed with the JWT secret above'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+      - name: 'Service Role Key'
+        key: serviceKey
+        description: 'Privileged service_role JWT, signed with the JWT secret above'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+      - name: 'Logflare Public Token'
+        key: logflarePublicToken
+        description: 'Public access token for the Logflare analytics backend'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+      - name: 'Logflare Private Token'
+        key: logflarePrivateToken
+        description: 'Private access token Studio uses to query analytics'
+        type: Password
+        required: true
+        export: true
+        modifiable: false
+
+      - name: 'Dashboard Username'
+        key: dashboardUsername
+        description: 'Username for the Studio dashboard'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'supabase'
+      - name: 'Dashboard Password'
+        key: dashboardPassword
+        description: 'Password for the Studio dashboard'
+        type: Password
+        required: true
+        export: true
+        modifiable: true
+      - name: 'Organization Name'
+        key: organizationName
+        description: 'Name of the default organization in Studio'
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: 'Default Organization'
+      - name: 'Project Name'
+        key: projectName
+        description: 'Name of the default project in Studio'
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: 'Default Project'
+
+      - name: 'DNS Endpoint'
+        key: dnsEndpoint
+        description: 'Hostname the Supabase API gateway is served on, e.g. supabase.acme.com'
+        type: String
+        required: true
+        export: true
+        modifiable: true
+        defaultValue: 'supabase.local'
+      - name: 'Ingress Class Name'
+        key: ingressClassName
+        description: 'Ingress controller class on the customer cluster'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'nginx'
+
+      - name: 'Storage Class'
+        key: storageClassName
+        description: "StorageClass for Supabase volumes. Leave blank to use the cluster's default."
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: ''
+      - name: 'Database Volume Size'
+        key: dbStorageSize
+        description: 'Size of the Postgres data volume'
+        type: String
+        required: false
+        export: true
+        modifiable: false
+        defaultValue: '20Gi'
+
+      - name: 'SMTP Host'
+        key: smtpHost
+        description: 'SMTP host for transactional email'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'supabase-mail'
+      - name: 'SMTP Port'
+        key: smtpPort
+        description: 'SMTP port'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: '2500'
+      - name: 'SMTP User'
+        key: smtpUser
+        description: 'SMTP username'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'fake_mail_user'
+      - name: 'SMTP Password'
+        key: smtpPassword
+        description: 'SMTP password'
+        type: Password
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'fake_mail_password'
+      - name: 'SMTP Sender Name'
+        key: smtpSenderName
+        description: 'Display name on outbound email'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'fake_sender'
+      - name: 'SMTP Admin Email'
+        key: smtpAdminEmail
+        description: 'Admin sender address'
+        type: String
+        required: false
+        export: true
+        modifiable: true
+        defaultValue: 'admin@example.com'
+
+    helmChartConfiguration:
+      chartName: supabase
+      chartVersion: 0.7.2
+      chartRepoName: supabase-community
+      chartRepoURL: https://supabase-community.github.io/supabase-kubernetes/
+      releaseName: '{{ $var.releaseName }}'
+      namespace: '{{ $var.namespace }}'
+
+      runtimeConfiguration:
+        wait: true
+        waitForJobs: true
+        upgradeCRDs: true
+        timeoutNanos: 900000000000
+
+      chartValues:
+        deployment:
+          analytics:
+            enabled: true
+
+        secret:
+          jwt:
+            secret: '{{ $var.jwtSecret }}'
+            anonKey: '{{ $var.anonKey }}'
+            serviceKey: '{{ $var.serviceKey }}'
+          db:
+            password: '{{ $var.postgresPassword }}'
+            database: postgres
+          analytics:
+            publicAccessToken: '{{ $var.logflarePublicToken }}'
+            privateAccessToken: '{{ $var.logflarePrivateToken }}'
+          dashboard:
+            username: '{{ $var.dashboardUsername }}'
+            password: '{{ $var.dashboardPassword }}'
+          smtp:
+            username: '{{ $var.smtpUser }}'
+            password: '{{ $var.smtpPassword }}'
+
+        environment:
+          auth:
+            - name: API_EXTERNAL_URL
+              value: 'https://{{ $var.dnsEndpoint }}'
+            - name: GOTRUE_API_HOST
+              value: '0.0.0.0'
+            - name: GOTRUE_API_PORT
+              value: '9999'
+            - name: GOTRUE_SITE_URL
+              value: 'https://{{ $var.dnsEndpoint }}'
+            - name: GOTRUE_URI_ALLOW_LIST
+              value: '*'
+            - name: GOTRUE_DISABLE_SIGNUP
+              value: 'false'
+            - name: GOTRUE_JWT_DEFAULT_GROUP_NAME
+              value: 'authenticated'
+            - name: GOTRUE_JWT_ADMIN_ROLES
+              value: 'service_role'
+            - name: GOTRUE_JWT_AUD
+              value: 'authenticated'
+            - name: GOTRUE_JWT_EXP
+              value: '3600'
+            - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
+              value: 'true'
+            - name: GOTRUE_MAILER_AUTOCONFIRM
+              value: 'true'
+            - name: GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED
+              value: 'false'
+            - name: GOTRUE_SMTP_ADMIN_EMAIL
+              value: '{{ $var.smtpAdminEmail }}'
+            - name: GOTRUE_SMTP_HOST
+              value: '{{ $var.smtpHost }}'
+            - name: GOTRUE_SMTP_PORT
+              value: '{{ $var.smtpPort }}'
+            - name: GOTRUE_EXTERNAL_PHONE_ENABLED
+              value: 'false'
+            - name: GOTRUE_SMS_AUTOCONFIRM
+              value: 'false'
+            - name: GOTRUE_SMTP_SENDER_NAME
+              value: '{{ $var.smtpSenderName }}'
+            - name: GOTRUE_MAILER_URLPATHS_INVITE
+              value: '/auth/v1/verify'
+            - name: GOTRUE_MAILER_URLPATHS_CONFIRMATION
+              value: '/auth/v1/verify'
+            - name: GOTRUE_MAILER_URLPATHS_RECOVERY
+              value: '/auth/v1/verify'
+            - name: GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE
+              value: '/auth/v1/verify'
+          studio:
+            - name: HOSTNAME
+              value: '::'
+            - name: STUDIO_PORT
+              value: '3000'
+            - name: DEFAULT_ORGANIZATION_NAME
+              value: '{{ $var.organizationName }}'
+            - name: DEFAULT_PROJECT_NAME
+              value: '{{ $var.projectName }}'
+            - name: SUPABASE_PUBLIC_URL
+              value: 'https://{{ $var.dnsEndpoint }}'
+            - name: NEXT_ANALYTICS_BACKEND_PROVIDER
+              value: 'postgres'
+            - name: NEXT_PUBLIC_ENABLE_LOGS
+              value: 'true'
+
+        persistence:
+          db:
+            enabled: true
+            size: '{{ $var.dbStorageSize }}'
+            storageClassName: '{{ $var.storageClassName }}'
+          storage:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          functions:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          imgproxy:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          snippets:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          deno:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          pgsodium:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+
+        ingress:
+          enabled: true
+          className: '{{ $var.ingressClassName }}'
+          hosts:
+            - host: '{{ $var.dnsEndpoint }}'
+              paths:
+                - path: /
+                  pathType: Prefix

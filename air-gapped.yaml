@@ -1,0 +1,461 @@
+name: Air-Gapped Tier (Installer)
+deployment:
+  onPremDeployment:
+    AwsAccountId: '<AWS_ACCOUNT_ID>'
+    AWSBootstrapRoleAccountArn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/omnistrate-bootstrap-role
+    requirements:
+      minimumK8sVersion: '>=1.30.0'
+features:
+  CUSTOMER:
+    licensing:
+      licenseExpirationInDays: 30
+services:
+- name: SyncSupabase
+  description: Copies docker.io/supabase images into the customer private registry
+  internal: true
+  disable: '{{ $var.skipCustomImageRegistry }}'
+  apiParameters:
+  - name: Skip Custom Image Registry
+    key: skipCustomImageRegistry
+    description: Set to false to copy images into your own registry
+    type: Boolean
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: 'true'
+  - name: Private Image Registry URL
+    key: privateRegistryUrl
+    description: Registry images are pushed to
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: docker.io
+  - name: Pull Mode
+    key: pullMode
+    description: INSTALLER_EMBED bakes images into the installer artifact. RUNTIME_PULL fetches them at install time.
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: INSTALLER_EMBED
+    options:
+    - INSTALLER_EMBED
+    - RUNTIME_PULL
+  containerImagesRegistryCopyConfiguration:
+    pullMode: '{{ $var.pullMode }}'
+    pullSource:
+      registryUrl: docker.io
+      repositoryName: supabase
+    pushTarget:
+      registryUrl: '{{ $var.privateRegistryUrl }}'
+      repositoryName: supabase
+    images:
+    - imageName: postgres
+      imageTag: 17.6.1.136
+    - imageName: gotrue
+      imageTag: v2.189.0
+    - imageName: realtime
+      imageTag: v2.102.3
+    - imageName: storage-api
+      imageTag: v1.60.4
+    - imageName: postgres-meta
+      imageTag: v0.96.6
+    - imageName: edge-runtime
+      imageTag: v1.74.0
+    - imageName: studio
+      imageTag: 2026.07.07-sha-a6a04f2
+    - imageName: logflare
+      imageTag: 1.43.1
+- name: Supabase
+  description: Supabase - the open source Firebase alternative
+  dependsOn:
+  - SyncSupabase
+  apiParameters:
+  - name: Skip Custom Image Registry
+    key: skipCustomImageRegistry
+    description: Set to false to copy every image into your own registry (required for a true air-gapped install)
+    type: Boolean
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: 'true'
+    parameterDependencyMap:
+      SyncSupabase: skipCustomImageRegistry
+  - name: Private Image Registry URL
+    key: privateRegistryUrl
+    description: Registry the installer pushes images to and the chart pulls them from
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: docker.io
+    parameterDependencyMap:
+      SyncSupabase: privateRegistryUrl
+  - name: Pull Mode
+    key: pullMode
+    description: INSTALLER_EMBED bakes images into the installer artifact. RUNTIME_PULL fetches them at install time.
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: INSTALLER_EMBED
+    options:
+    - INSTALLER_EMBED
+    - RUNTIME_PULL
+    parameterDependencyMap:
+      SyncSupabase: pullMode
+  - name: Release Name
+    key: releaseName
+    description: Helm release name
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: supabase
+  - name: Namespace
+    key: namespace
+    description: Kubernetes namespace to install Supabase into
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: supabase
+  - name: Postgres Password
+    key: postgresPassword
+    description: Password for the Supabase Postgres superuser
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: JWT Secret
+    key: jwtSecret
+    description: Signing secret shared by every Supabase service (min 32 characters)
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: Anon Key
+    key: anonKey
+    description: Public anon JWT, signed with the JWT secret above
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: Service Role Key
+    key: serviceKey
+    description: Privileged service_role JWT, signed with the JWT secret above
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: Logflare Public Token
+    key: logflarePublicToken
+    description: Public access token for the Logflare analytics backend
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: Logflare Private Token
+    key: logflarePrivateToken
+    description: Private access token Studio uses to query analytics
+    type: Password
+    required: true
+    export: true
+    modifiable: false
+  - name: Dashboard Username
+    key: dashboardUsername
+    description: Username for the Studio dashboard
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: supabase
+  - name: Dashboard Password
+    key: dashboardPassword
+    description: Password for the Studio dashboard
+    type: Password
+    required: true
+    export: true
+    modifiable: true
+  - name: Organization Name
+    key: organizationName
+    description: Name of the default organization in Studio
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: Default Organization
+  - name: Project Name
+    key: projectName
+    description: Name of the default project in Studio
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: Default Project
+  - name: DNS Endpoint
+    key: dnsEndpoint
+    description: Hostname the Supabase API gateway is served on, e.g. supabase.internal.acme.com
+    type: String
+    required: true
+    export: true
+    modifiable: true
+    defaultValue: supabase.local
+  - name: Ingress Class Name
+    key: ingressClassName
+    description: Ingress controller class on the target cluster
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: nginx
+  - name: Storage Class
+    key: storageClassName
+    description: StorageClass for Supabase volumes. Leave blank to use the cluster's default.
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: ''
+  - name: Database Volume Size
+    key: dbStorageSize
+    description: Size of the Postgres data volume
+    type: String
+    required: false
+    export: true
+    modifiable: false
+    defaultValue: 20Gi
+  - name: SMTP Host
+    key: smtpHost
+    description: SMTP host for transactional email
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: supabase-mail
+  - name: SMTP Port
+    key: smtpPort
+    description: SMTP port
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: '2500'
+  - name: SMTP User
+    key: smtpUser
+    description: SMTP username
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: fake_mail_user
+  - name: SMTP Password
+    key: smtpPassword
+    description: SMTP password
+    type: Password
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: fake_mail_password
+  - name: SMTP Sender Name
+    key: smtpSenderName
+    description: Display name on outbound email
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: fake_sender
+  - name: SMTP Admin Email
+    key: smtpAdminEmail
+    description: Admin sender address
+    type: String
+    required: false
+    export: true
+    modifiable: true
+    defaultValue: admin@example.com
+  actionHooks:
+  - Scope: CLUSTER
+    Type: VALIDATE
+    CommandTemplate: "set -euo pipefail\nsay() { echo \"[supabase-installer] $*\"; }\nfail() { echo \"[supabase-installer][ERROR] $*\" >&2; exit 1; }\n\nsay \"validating target cluster\"\n\nfor bin in kubectl helm; do\n  command -v \"$bin\" >/dev/null 2>&1 || fail \"required binary '$bin' not found on PATH\"\ndone\n\nkubectl version -o json >/dev/null 2>&1 \\\n  || fail \"cannot reach the Kubernetes API - check your kubeconfig\"\n\nSC=\"{{ $var.storageClassName }}\"\nif [ -z \"$SC\" ]; then\n  kubectl get storageclass -o jsonpath='{.items[?(@.metadata.annotations.storageclass\\.kubernetes\\.io/is-default-class==\"true\")].metadata.name}' \\\n    | grep -q . || fail \"no default StorageClass on this cluster; set the Storage Class parameter\"\nelse\n  kubectl get storageclass \"$SC\" >/dev/null 2>&1 || fail \"StorageClass '$SC' not found\"\nfi\n\nkubectl get ingressclass \"{{ $var.ingressClassName }}\" >/dev/null 2>&1 \\\n  || fail \"IngressClass '{{ $var.ingressClassName }}' not found. Install an ingress controller or change the Ingress Class Name parameter.\"\n\nsay \"cluster looks good\"\n"
+  - Scope: CLUSTER
+    Type: PRE_INSTALL
+    CommandTemplate: "set -euo pipefail\necho \"[supabase-installer] preparing namespace {{ $var.namespace }}\"\nkubectl create namespace \"{{ $var.namespace }}\" \\\n  --dry-run=client -o yaml | kubectl apply -f -\n"
+  - Scope: CLUSTER
+    Type: POST_INSTALL
+    CommandTemplate: 'set -euo pipefail
+
+      NS="{{ $var.namespace }}"
+
+      say() { echo "[supabase-installer] $*"; }
+
+
+      say "waiting for Supabase to become ready in $NS"
+
+      kubectl -n "$NS" wait --for=condition=Available --timeout=600s deployment --all 2>/dev/null || true
+
+      kubectl -n "$NS" rollout status statefulset --timeout=600s 2>/dev/null || true
+
+
+      say "Supabase is up."
+
+      say "  Studio / API  : https://{{ $var.dnsEndpoint }}"
+
+      say "  Dashboard user: {{ $var.dashboardUsername }}"
+
+      say "Point ''{{ $var.dnsEndpoint }}'' at your ingress controller if you have not already."
+
+      '
+  - Scope: CLUSTER
+    Type: BACKUP
+    CommandTemplate: "set -euo pipefail\nNS=\"{{ $var.namespace }}\"\nOUT=\"/tmp/supabase-backup-$(date -u +%Y%m%dT%H%M%SZ).sql\"\n\nPOD=\"$(kubectl -n \"$NS\" get pod \\\n  -l app.kubernetes.io/name=supabase,app.kubernetes.io/component=db \\\n  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)\"\n\nif [ -z \"$POD\" ]; then\n  echo \"[supabase-installer][ERROR] no Supabase db pod found in namespace $NS - skipping backup\" >&2\n  exit 0\nfi\n\necho \"[supabase-installer] dumping database from $POD to $OUT\"\nkubectl -n \"$NS\" exec \"$POD\" -- pg_dumpall -U supabase_admin > \"$OUT\"\necho \"[supabase-installer] backup written to $OUT\"\n"
+  helmChartConfiguration:
+    chartName: supabase
+    chartVersion: 0.7.2
+    chartRepoName: supabase-community
+    chartRepoURL: https://supabase-community.github.io/supabase-kubernetes/
+    releaseName: '{{ $var.releaseName }}'
+    namespace: '{{ $var.namespace }}'
+    runtimeConfiguration:
+      wait: true
+      waitForJobs: true
+      upgradeCRDs: true
+      timeoutNanos: 900000000000
+    layeredChartValues:
+    - name: base
+      values:
+        deployment:
+          analytics:
+            enabled: true
+        secret:
+          jwt:
+            secret: '{{ $var.jwtSecret }}'
+            anonKey: '{{ $var.anonKey }}'
+            serviceKey: '{{ $var.serviceKey }}'
+          db:
+            password: '{{ $var.postgresPassword }}'
+            database: postgres
+          analytics:
+            publicAccessToken: '{{ $var.logflarePublicToken }}'
+            privateAccessToken: '{{ $var.logflarePrivateToken }}'
+          dashboard:
+            username: '{{ $var.dashboardUsername }}'
+            password: '{{ $var.dashboardPassword }}'
+          smtp:
+            username: '{{ $var.smtpUser }}'
+            password: '{{ $var.smtpPassword }}'
+        environment:
+          auth:
+          - name: API_EXTERNAL_URL
+            value: https://{{ $var.dnsEndpoint }}
+          - name: GOTRUE_API_HOST
+            value: 0.0.0.0
+          - name: GOTRUE_API_PORT
+            value: '9999'
+          - name: GOTRUE_SITE_URL
+            value: https://{{ $var.dnsEndpoint }}
+          - name: GOTRUE_URI_ALLOW_LIST
+            value: '*'
+          - name: GOTRUE_DISABLE_SIGNUP
+            value: 'false'
+          - name: GOTRUE_JWT_DEFAULT_GROUP_NAME
+            value: authenticated
+          - name: GOTRUE_JWT_ADMIN_ROLES
+            value: service_role
+          - name: GOTRUE_JWT_AUD
+            value: authenticated
+          - name: GOTRUE_JWT_EXP
+            value: '3600'
+          - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
+            value: 'true'
+          - name: GOTRUE_MAILER_AUTOCONFIRM
+            value: 'true'
+          - name: GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED
+            value: 'false'
+          - name: GOTRUE_SMTP_ADMIN_EMAIL
+            value: '{{ $var.smtpAdminEmail }}'
+          - name: GOTRUE_SMTP_HOST
+            value: '{{ $var.smtpHost }}'
+          - name: GOTRUE_SMTP_PORT
+            value: '{{ $var.smtpPort }}'
+          - name: GOTRUE_EXTERNAL_PHONE_ENABLED
+            value: 'false'
+          - name: GOTRUE_SMS_AUTOCONFIRM
+            value: 'false'
+          - name: GOTRUE_SMTP_SENDER_NAME
+            value: '{{ $var.smtpSenderName }}'
+          - name: GOTRUE_MAILER_URLPATHS_INVITE
+            value: /auth/v1/verify
+          - name: GOTRUE_MAILER_URLPATHS_CONFIRMATION
+            value: /auth/v1/verify
+          - name: GOTRUE_MAILER_URLPATHS_RECOVERY
+            value: /auth/v1/verify
+          - name: GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE
+            value: /auth/v1/verify
+          studio:
+          - name: HOSTNAME
+            value: '::'
+          - name: STUDIO_PORT
+            value: '3000'
+          - name: DEFAULT_ORGANIZATION_NAME
+            value: '{{ $var.organizationName }}'
+          - name: DEFAULT_PROJECT_NAME
+            value: '{{ $var.projectName }}'
+          - name: SUPABASE_PUBLIC_URL
+            value: https://{{ $var.dnsEndpoint }}
+          - name: NEXT_ANALYTICS_BACKEND_PROVIDER
+            value: postgres
+          - name: NEXT_PUBLIC_ENABLE_LOGS
+            value: 'true'
+        persistence:
+          db:
+            enabled: true
+            size: '{{ $var.dbStorageSize }}'
+            storageClassName: '{{ $var.storageClassName }}'
+          storage:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          functions:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          imgproxy:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          snippets:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          deno:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+          pgsodium:
+            enabled: true
+            storageClassName: '{{ $var.storageClassName }}'
+        ingress:
+          enabled: true
+          className: '{{ $var.ingressClassName }}'
+          hosts:
+          - host: '{{ $var.dnsEndpoint }}'
+            paths:
+            - path: /
+              pathType: Prefix
+    - name: private-registry-images
+      scope:
+        '{{ $var.skipCustomImageRegistry }}': 'false'
+      values:
+        image:
+          db:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/postgres'
+          auth:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/gotrue'
+          realtime:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/realtime'
+          storage:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/storage-api'
+          meta:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/postgres-meta'
+          functions:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/edge-runtime'
+          studio:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/studio'
+          analytics:
+            repository: '{{ $var.privateRegistryUrl }}/supabase/logflare'
